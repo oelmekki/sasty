@@ -12,18 +12,20 @@ Sasty is a ncurses interface to read [Gitlab's SAST reports](https://docs.gitlab
 
 Sasty depends on:
 
-* gcc
-* make
-* pkg-config
-* ncurses
-* json-c
+* gcc (gentoo: sys-devel/gcc, debian/ubuntu: gcc)
+  * Note that you can use an other compiler with the `CC` variable.
+* make (gentoo: sys-devel/make, debian/ubuntu: make)
+* pkg-config (gentoo: dev-util/pkgconf, debian/ubuntu: pkg-config)
+* ncurses (gentoo: sys-libs/ncurses, debian/ubuntu: libncursesw5-dev)
+* json-c (gentoo: dev-libs/json-c, debian/ubuntu: libjson-c-dev)
 
 ## Installation
 
 ```
-make
-sudo make install         # will install in /usr/local/bin
-make install PREFIX=~/bin # to install somewhere else
+make                          # build with gcc
+# make CC=clang               # build with clang instead
+sudo make install             # will install in /usr/local/bin
+# make install PREFIX=~/bin   # to install somewhere else
 ```
 
 ## Usage
