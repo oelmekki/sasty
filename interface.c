@@ -74,11 +74,31 @@ format_lines (size_t max_width, vulnerability_t *vulnerability, char *lines[MAX_
   int err = 0;
   char *desc_copy = NULL;
 
+  char *part = vulnerability->file;
+  while (true)
+    {
+      if (*count + 1 == MAX_LINES)
+        {
+          err = 1;
+          mvwprintw (report_win, 1, 1, "report contains too many lines (max allowed: %d).", MAX_LINES);
+          wrefresh (report_win);
+          goto cleanup;
+        }
+
+      lines[*count] = xalloc (max_width + 1);
+      size_t would_write = snprintf (lines[*count], max_width, "%s", part);
+      (*count)++;
+      if (would_write > max_width)
+        part += max_width;
+      else
+        break;
+    }
+
   lines[*count] = xalloc (max_width + 1);
   snprintf (lines[*count], max_width, "Category: %s", vulnerability->category);
   (*count)++;
 
-  char *part = vulnerability->title;
+  part = vulnerability->title;
   while (true)
     {
       if (*count + 1 == MAX_LINES)

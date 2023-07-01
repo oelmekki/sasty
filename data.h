@@ -7,6 +7,7 @@ typedef struct {
   char *category;
   char *title;
   char *description;
+  char *file;
 } vulnerability_t;
 
 int parse_data (const char *uri, vulnerability_t vulnerabilities[MAX_VULNERABILITY_COUNT], size_t *vulnerabilities_count);

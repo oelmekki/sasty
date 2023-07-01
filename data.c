@@ -60,6 +60,26 @@ validate_json (json_object *data)
           return 1;
         }
 
+      json_object *location = json_object_object_get (vuln, "location");
+      if (!location || json_object_get_type (location) != json_type_object)
+        {
+          fprintf (stderr, "data.c : validate_json() : malformed json : key `location` in vulnerability %ld either missing or not an object.\n", i);
+          return 1;
+        }
+
+      json_object *file = json_object_object_get (location, "file");
+      if (!file || json_object_get_type (file) != json_type_string)
+        {
+          fprintf (stderr, "data.c : validate_json() : malformed json : key `file` in vulnerability %ld's location either missing or not a string.\n", i);
+          return 1;
+        }
+
+      json_object *line = json_object_object_get (location, "start_line");
+      if (!line || json_object_get_type (line) != json_type_int)
+        {
+          fprintf (stderr, "data.c : validate_json() : malformed json : key `start_line` in vulnerability %ld's location either missing or not an integer.\n", i);
+          return 1;
+        }
     }
 
   return 0;
@@ -82,6 +102,14 @@ fill_data (json_object *data, vulnerability_t vulnerabilities[MAX_VULNERABILITY_
       vulnerabilities[i].category = strdup (json_object_get_string (json_object_object_get (vuln, "category")));
       vulnerabilities[i].title = strdup (json_object_get_string (json_object_object_get (vuln, "title")));
       vulnerabilities[i].description = strdup (json_object_get_string (json_object_object_get (vuln, "description")));
+
+      json_object *location = json_object_object_get (vuln, "location");
+      json_object *file = json_object_object_get (location, "file");
+      json_object *line = json_object_object_get (location, "start_line");
+      char file_location[BUFSIZ] = {0};
+      snprintf (file_location, BUFSIZ - 1, "%s:%d", json_object_get_string (file), json_object_get_int (line));
+      vulnerabilities[i].file = strdup (file_location);
+
       (*vulnerabilities_count)++;
     }
 
@@ -144,5 +172,6 @@ free_data (vulnerability_t vulnerabilities[MAX_VULNERABILITY_COUNT], size_t vuln
       if (vuln->category) free (vuln->category);
       if (vuln->title) free (vuln->title);
       if (vuln->description) free (vuln->description);
+      if (vuln->file) free (vuln->file);
     }
 }
