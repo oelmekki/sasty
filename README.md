@@ -25,7 +25,7 @@ Sasty depends on:
 make                          # build with gcc
 # make CC=clang               # build with clang instead
 sudo make install             # will install in /usr/local/bin
-# make install PREFIX=~/bin   # to install somewhere else
+# make install PREFIX=~/      # will install instead in ~/bin
 ```
 
 ## Usage
