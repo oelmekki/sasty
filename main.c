@@ -44,10 +44,12 @@ main (int argc, char **argv)
     }
 
   init_ncurses (vulnerabilities, vulnerabilities_count);
+  size_t current_vulnerability = 0;
+  size_t current_line = 0;
 
   while (true)
     {
-      bool quit = handle_key ();
+      bool quit = handle_key (vulnerabilities, vulnerabilities_count, &current_vulnerability, &current_line);
       if (quit)
         break;
     }

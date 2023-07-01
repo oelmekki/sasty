@@ -35,7 +35,6 @@ create_report_window ()
   wrefresh (report_win);
 }
 
-
 /*
  * Fill the left menu with the names of vulnerabilities found.
  */
@@ -154,7 +153,6 @@ static int
 show_report (vulnerability_t *vulnerability, size_t y)
 {
   int err = 0;
-  (void) y;
 
   wclear (report_win);
   size_t max_width = (COLS / 3 * 2) - 2;
@@ -169,6 +167,8 @@ show_report (vulnerability_t *vulnerability, size_t y)
       goto cleanup;
     }
 
+  if (y >= line_count - 2)
+    y = line_count - 2;
 
   wattron (report_win, COLOR_PAIR(2));
   wattron (report_win, A_BOLD);
@@ -211,7 +211,7 @@ init_ncurses (vulnerability_t vulnerabilities[MAX_VULNERABILITY_COUNT], size_t v
 
   create_list_window ();
   create_report_window ();
-  mvprintw (LINES - 1, 1, "Press q to quit");
+  mvprintw (LINES - 1, 1, "Press q to quit, tab/S-tab to navigate reports, j/k/DOWN/UP to scroll down/up the report");
   
   populate_list (vulnerabilities, vulnerabilities_count);
 
@@ -230,14 +230,58 @@ init_ncurses (vulnerability_t vulnerabilities[MAX_VULNERABILITY_COUNT], size_t v
  * Returns true if the program needs to quit.
  */
 bool
-handle_key ()
+handle_key (vulnerability_t vulnerabilities[MAX_VULNERABILITY_COUNT], size_t vulnerabilities_count, size_t *current_vulnerability, size_t *current_line)
 {
   int key = getch ();
+  (void) vulnerabilities_count;
 
   switch (key)
     {
       case 'q':
         return true;
+
+      case 'j':
+      case KEY_DOWN:
+        (*current_line)++;
+        show_report (&vulnerabilities[*current_vulnerability], *current_line);
+        move (LINES - 1, COLS - 1);
+        break;
+
+      case 'k':
+      case KEY_UP:
+        if (*current_line > 0)
+          {
+            (*current_line)--;
+            show_report (&vulnerabilities[*current_vulnerability], *current_line);
+            move (LINES - 1, COLS - 1);
+          }
+        break;
+
+      case '\t':
+        if (*current_vulnerability < vulnerabilities_count - 1)
+          {
+            (*current_vulnerability)++;
+            *current_line = 0;
+            menu_driver (list_menu, REQ_DOWN_ITEM);
+            wrefresh (list_win);
+            show_report (&vulnerabilities[*current_vulnerability], *current_line);
+            move (LINES - 1, COLS - 1);
+          }
+
+        break;
+
+      case KEY_BTAB:
+        if (*current_vulnerability > 0)
+          {
+            (*current_vulnerability)--;
+            *current_line = 0;
+            menu_driver (list_menu, REQ_UP_ITEM);
+            wrefresh (list_win);
+            show_report (&vulnerabilities[*current_vulnerability], *current_line);
+            move (LINES - 1, COLS - 1);
+          }
+
+        break;
     }
 
   return false;
