@@ -57,6 +57,11 @@ populate_list (vulnerability_t vulnerabilities[MAX_VULNERABILITY_COUNT], size_t 
   refresh ();
 }
 
+typedef struct {
+  char *content;
+  bool heading;
+} line_t;
+
 /*
  * Reformat lines to fit the available `max_width`, so we know exactly
  * how many lines we need.
@@ -69,7 +74,7 @@ populate_list (vulnerability_t vulnerabilities[MAX_VULNERABILITY_COUNT], size_t 
  * Returns non-zero in case of error.
  */
 static int
-format_lines (size_t max_width, vulnerability_t *vulnerability, char *lines[MAX_LINES], size_t *count)
+format_lines (size_t max_width, vulnerability_t *vulnerability, line_t lines[MAX_LINES], size_t *count)
 {
   int err = 0;
   char *desc_copy = NULL;
@@ -85,8 +90,9 @@ format_lines (size_t max_width, vulnerability_t *vulnerability, char *lines[MAX_
           goto cleanup;
         }
 
-      lines[*count] = xalloc (max_width + 1);
-      size_t would_write = snprintf (lines[*count], max_width, "%s", part);
+      lines[*count].content = xalloc (max_width + 1);
+      lines[*count].heading = true;
+      size_t would_write = snprintf (lines[*count].content, max_width, "%s", part);
       (*count)++;
       if (would_write > max_width)
         part += max_width;
@@ -94,8 +100,9 @@ format_lines (size_t max_width, vulnerability_t *vulnerability, char *lines[MAX_
         break;
     }
 
-  lines[*count] = xalloc (max_width + 1);
-  snprintf (lines[*count], max_width, "Category: %s", vulnerability->category);
+  lines[*count].content = xalloc (max_width + 1);
+  lines[*count].heading = true;
+  snprintf (lines[*count].content, max_width, "Category: %s", vulnerability->category);
   (*count)++;
 
   part = vulnerability->title;
@@ -109,8 +116,9 @@ format_lines (size_t max_width, vulnerability_t *vulnerability, char *lines[MAX_
           goto cleanup;
         }
 
-      lines[*count] = xalloc (max_width + 1);
-      size_t would_write = snprintf (lines[*count], max_width, "%s", part);
+      lines[*count].content = xalloc (max_width + 1);
+      lines[*count].heading = true;
+      size_t would_write = snprintf (lines[*count].content, max_width, "%s", part);
       (*count)++;
       if (would_write > max_width)
         part += max_width;
@@ -118,7 +126,7 @@ format_lines (size_t max_width, vulnerability_t *vulnerability, char *lines[MAX_
         break;
     }
 
-  lines[*count] = xalloc (1);
+  lines[*count].content = xalloc (1);
   (*count)++;
 
   desc_copy = strdup (vulnerability->description);
@@ -147,8 +155,8 @@ format_lines (size_t max_width, vulnerability_t *vulnerability, char *lines[MAX_
               goto cleanup;
             }
 
-          lines[*count] = xalloc (max_width + 2);
-          size_t would_write = snprintf (lines[*count], max_width + 1, "%s", part);
+          lines[*count].content = xalloc (max_width + 2);
+          size_t would_write = snprintf (lines[*count].content, max_width + 1, "%s", part);
           (*count)++;
           if (would_write > max_width)
             part += max_width;
@@ -177,7 +185,7 @@ show_report (vulnerability_t *vulnerability, size_t y)
   wclear (report_win);
   size_t max_width = (COLS / 3 * 2) - 2;
   size_t max_height = LINES - 2;
-  char *lines[MAX_LINES] = {0};
+  line_t lines[MAX_LINES] = {0};
   size_t line_count = 0;
 
   err = format_lines (max_width, vulnerability, lines, &line_count);
@@ -190,12 +198,17 @@ show_report (vulnerability_t *vulnerability, size_t y)
   if (y >= line_count - 2)
     y = line_count - 2;
 
-  wattron (report_win, COLOR_PAIR(2));
-  wattron (report_win, A_BOLD);
   for (size_t i = 0; i < max_height && i + y < line_count; i++)
     {
-      mvwprintw (report_win, i + 1, 1, "%s", lines[i + y]);
-      if (strlen (lines[i + y]) == 0)
+      if (lines[i + y].heading)
+        {
+          wattron (report_win, COLOR_PAIR(2));
+          wattron (report_win, A_BOLD);
+        }
+
+      mvwprintw (report_win, i + 1, 1, "%s", lines[i + y].content);
+
+      if (lines[i + y].heading)
         {
           wattroff (report_win, A_BOLD);
           wattroff (report_win, COLOR_PAIR(2));
@@ -207,7 +220,7 @@ show_report (vulnerability_t *vulnerability, size_t y)
 
   cleanup:
   for (size_t i = 0; i < line_count; i++)
-    free (lines[i]);
+    free (lines[i].content);
 
   return err;
 }
