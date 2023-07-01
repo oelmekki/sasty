@@ -8,12 +8,11 @@
 static void
 usage (const char *progname)
 {
-  printf ("%s [-h|--help] <file|url> \n\
+  printf ("%s [-h|--help] <file> \n\
 \n\
 Brings a ncurses interface to inspect Gitlab's SAST reports. \n\
 \n\
-You can either provide a path to a downloaded JSON report, \n\
-or provide its url, provided it's publicly accessible. \n\
+You must provide a path to a downloaded JSON report. \n\
   ", progname);
 }
 
