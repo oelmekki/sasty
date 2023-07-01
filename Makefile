@@ -1,11 +1,11 @@
 PROG = sasty
 CC = gcc
-CFLAGS = $(shell pkg-config --cflags ncursesw panelw json-c)
+CFLAGS = $(shell pkg-config --cflags menuw ncursesw json-c)
 PREFIX = /usr/local
 FILES = $(wildcard *.c)
 OBJ = $(patsubst %.c, %.o, $(FILES))
 OBJDEV = $(patsubst %.c, %.o-dev, $(FILES))
-LIBS = $(shell pkg-config --libs ncursesw panelw json-c)
+LIBS = $(shell pkg-config --libs menuw ncursesw json-c)
 
 .PHONY: all dev install clean analyze
 

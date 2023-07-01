@@ -43,7 +43,7 @@ main (int argc, char **argv)
       goto cleanup;
     }
 
-  init_ncurses ();
+  init_ncurses (vulnerabilities, vulnerabilities_count);
 
   while (true)
     {
