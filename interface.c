@@ -3,15 +3,19 @@
 #include <menu.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "data.h"
 #include "utils.h"
+
+#define MAX_LINES 2000
+#define MAX_LINE_LENGTH 1000
 
 WINDOW *list_win = NULL;
 MENU *list_menu = NULL;
 ITEM **items = NULL;
 
-WINDOW *details_win = NULL;
+WINDOW *report_win = NULL;
 
 static void
 create_list_window ()
@@ -23,12 +27,12 @@ create_list_window ()
 }
 
 static void
-create_details_window ()
+create_report_window ()
 {
-  details_win = newwin (LINES-1, COLS / 3 * 2, 0, COLS / 3 + 1);
-  keypad (details_win, TRUE);
-  box (details_win, 0, 0);
-  wrefresh (details_win);
+  report_win = newwin (LINES-1, COLS / 3 * 2, 0, COLS / 3 + 1);
+  keypad (report_win, TRUE);
+  box (report_win, 0, 0);
+  wrefresh (report_win);
 }
 
 
@@ -38,10 +42,6 @@ create_details_window ()
 static void
 populate_list (vulnerability_t vulnerabilities[MAX_VULNERABILITY_COUNT], size_t vulnerabilities_count)
 {
-  int err = 0;
-  (void) vulnerabilities;
-  (void) vulnerabilities_count;
-
   items = xalloc ((vulnerabilities_count + 1) * sizeof (ITEM *));
   for (size_t i = 0; i < vulnerabilities_count; i++)
     items[i] = new_item (vulnerabilities[i].title, NULL);
@@ -59,6 +59,140 @@ populate_list (vulnerability_t vulnerabilities[MAX_VULNERABILITY_COUNT], size_t 
 }
 
 /*
+ * Reformat lines to fit the available `max_width`, so we know exactly
+ * how many lines we need.
+ *
+ * That number of lines will be put into `count`, and the lines
+ * will be in `lines`.
+ *
+ * You're responsible for freeing the strings contains in `lines`.
+ *
+ * Returns non-zero in case of error.
+ */
+static int
+format_lines (size_t max_width, vulnerability_t *vulnerability, char *lines[MAX_LINES], size_t *count)
+{
+  int err = 0;
+  char *desc_copy = NULL;
+
+  lines[*count] = xalloc (max_width + 1);
+  snprintf (lines[*count], max_width, "Category: %s", vulnerability->category);
+  (*count)++;
+
+  char *part = vulnerability->title;
+  while (true)
+    {
+      if (*count + 1 == MAX_LINES)
+        {
+          err = 1;
+          mvwprintw (report_win, 1, 1, "report contains too many lines (max allowed: %d).", MAX_LINES);
+          wrefresh (report_win);
+          goto cleanup;
+        }
+
+      lines[*count] = xalloc (max_width + 1);
+      size_t would_write = snprintf (lines[*count], max_width, "%s", part);
+      (*count)++;
+      if (would_write > max_width)
+        part += max_width;
+      else
+        break;
+    }
+
+  lines[*count] = xalloc (1);
+  (*count)++;
+
+  desc_copy = strdup (vulnerability->description);
+  char *start = desc_copy;
+
+  while (start)
+    {
+      char *end = strstr (start, "\n");
+      size_t len = end ? (size_t) (end - start) : strlen (start);
+      if (len > MAX_LINE_LENGTH)
+        len = MAX_LINE_LENGTH;
+
+      char line[len + 2];
+      memset (line, 0, len + 2);
+      snprintf (line, len + 1, "%s", start);
+
+      char *part = line;
+
+      while (true)
+        {
+          if (*count + 1 == MAX_LINES)
+            {
+              err = 1;
+              mvwprintw (report_win, 1, 1, "report contains too many lines (max allowed: %d).", MAX_LINES);
+              wrefresh (report_win);
+              goto cleanup;
+            }
+
+          lines[*count] = xalloc (max_width + 2);
+          size_t would_write = snprintf (lines[*count], max_width + 1, "%s", part);
+          (*count)++;
+          if (would_write > max_width)
+            part += max_width;
+          else
+            break;
+        }
+
+      start = end;
+      if (start && start[0] != 0)
+        start++; // eat the \n character.
+    }
+
+  cleanup:
+  if (desc_copy) free (desc_copy);
+  return err;
+}
+
+/*
+ * Display given vulnerability in main window.
+ */
+static int
+show_report (vulnerability_t *vulnerability, size_t y)
+{
+  int err = 0;
+  (void) y;
+
+  wclear (report_win);
+  size_t max_width = (COLS / 3 * 2) - 2;
+  size_t max_height = LINES - 2;
+  char *lines[MAX_LINES] = {0};
+  size_t line_count = 0;
+
+  err = format_lines (max_width, vulnerability, lines, &line_count);
+  if (err)
+    {
+      fprintf (stderr, "interface.c : show_report() : can't format lines.\n");
+      goto cleanup;
+    }
+
+
+  wattron (report_win, COLOR_PAIR(2));
+  wattron (report_win, A_BOLD);
+  for (size_t i = 0; i < max_height && i + y < line_count; i++)
+    {
+      mvwprintw (report_win, i + 1, 1, "%s", lines[i + y]);
+      if (strlen (lines[i + y]) == 0)
+        {
+          wattroff (report_win, A_BOLD);
+          wattroff (report_win, COLOR_PAIR(2));
+        }
+    }
+
+  box (report_win, 0, 0);
+  wrefresh (report_win);
+
+  cleanup:
+  for (size_t i = 0; i < line_count; i++)
+    free (lines[i]);
+
+  return err;
+}
+
+/*
  * Get ncurses interface ready.
  */
 void
@@ -71,16 +205,22 @@ init_ncurses (vulnerability_t vulnerabilities[MAX_VULNERABILITY_COUNT], size_t v
   noecho ();
   start_color ();
   init_pair (1, COLOR_WHITE, COLOR_BLACK);
-  init_pair (2, COLOR_BLACK, COLOR_WHITE);
+  init_pair (2, COLOR_YELLOW, COLOR_BLACK);
   attron (COLOR_PAIR(1));
   refresh ();
 
   create_list_window ();
-  create_details_window ();
-  mvprintw (LINES-1, 1, "Press q to quit");
+  create_report_window ();
+  mvprintw (LINES - 1, 1, "Press q to quit");
   
   populate_list (vulnerabilities, vulnerabilities_count);
-  move (LINES-1, COLS-1);
+
+  if (vulnerabilities_count > 0)
+    show_report (&vulnerabilities[0], 0);
+  else
+    mvwprintw (report_win, 1, 1, "No vulnerability found.");
+
+  move (LINES - 1, COLS - 1);
   refresh ();
 }
 
