@@ -44,6 +44,7 @@ init_ncurses ()
   init_pair (1, COLOR_WHITE, COLOR_BLACK);
   init_pair (2, COLOR_BLACK, COLOR_WHITE);
   attron (COLOR_PAIR(1));
+  refresh ();
 
   create_list_window ();
   create_details_window ();

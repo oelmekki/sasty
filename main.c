@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "data.h"
 #include "interface.h"
 
 static void
@@ -19,6 +20,10 @@ or provide its url, provided it's publicly accessible. \n\
 int
 main (int argc, char **argv)
 {
+  int err = 0;
+  vulnerability_t vulnerabilities[MAX_VULNERABILITY_COUNT] = {0};
+  size_t vulnerabilities_count = 0;
+
   if (argc != 2)
     {
       usage (argv[0]);
@@ -31,6 +36,13 @@ main (int argc, char **argv)
       return 0;
     }
 
+  err = parse_data (argv[1], vulnerabilities, &vulnerabilities_count);
+  if (err)
+    {
+      fprintf (stderr, "main.c : main() : can't parse data.\n");
+      goto cleanup;
+    }
+
   init_ncurses ();
 
   while (true)
@@ -40,5 +52,8 @@ main (int argc, char **argv)
         break;
     }
 
+  cleanup:
   cleanup_ncurses ();
+  free_data (vulnerabilities, vulnerabilities_count);
+  return err;
 }
