@@ -21,6 +21,7 @@ static void
 create_list_window ()
 {
   list_win = newwin (LINES-1, COLS / 3, 0, 0);
+  wattron (list_win, COLOR_PAIR (1));
   keypad (list_win, TRUE);
   box (list_win, 0, 0);
   wrefresh (list_win);
@@ -30,6 +31,7 @@ static void
 create_report_window ()
 {
   report_win = newwin (LINES-1, COLS / 3 * 2, 0, COLS / 3 + 1);
+  wattron (report_win, COLOR_PAIR (1));
   keypad (report_win, TRUE);
   box (report_win, 0, 0);
   wrefresh (report_win);
@@ -47,6 +49,7 @@ populate_list (vulnerability_t vulnerabilities[MAX_VULNERABILITY_COUNT], size_t 
 
   list_menu = new_menu (items);
   set_menu_win (list_menu, list_win);
+  set_menu_back (list_menu, COLOR_PAIR (1));
 
   WINDOW *sub = derwin (list_win, LINES - 3, COLS / 3 - 2, 1, 1);
   set_menu_sub (list_menu, sub);
@@ -202,7 +205,7 @@ show_report (vulnerability_t *vulnerability, size_t y)
     {
       if (lines[i + y].heading)
         {
-          wattron (report_win, COLOR_PAIR(2));
+          wattron (report_win, COLOR_PAIR (2));
           wattron (report_win, A_BOLD);
         }
 
@@ -211,7 +214,8 @@ show_report (vulnerability_t *vulnerability, size_t y)
       if (lines[i + y].heading)
         {
           wattroff (report_win, A_BOLD);
-          wattroff (report_win, COLOR_PAIR(2));
+          wattroff (report_win, COLOR_PAIR (2));
+          wattron (report_win, COLOR_PAIR (1));
         }
     }
 
@@ -239,7 +243,7 @@ init_ncurses (vulnerability_t vulnerabilities[MAX_VULNERABILITY_COUNT], size_t v
   start_color ();
   init_pair (1, COLOR_WHITE, COLOR_BLACK);
   init_pair (2, COLOR_YELLOW, COLOR_BLACK);
-  attron (COLOR_PAIR(1));
+  attron (COLOR_PAIR (1));
   refresh ();
 
   create_list_window ();
