@@ -248,7 +248,7 @@ init_ncurses (vulnerability_t vulnerabilities[MAX_VULNERABILITY_COUNT], size_t v
 
   create_list_window ();
   create_report_window ();
-  mvprintw (LINES - 1, 1, "Press q to quit, tab/S-tab to navigate reports, j/k/DOWN/UP to scroll down/up the report");
+  mvprintw (LINES - 1, 1, "Press q to quit, J/K/tab/S-tab to navigate reports, j/k/DOWN/UP to scroll down/up the report");
   
   populate_list (vulnerabilities, vulnerabilities_count);
 
@@ -294,6 +294,7 @@ handle_key (vulnerability_t vulnerabilities[MAX_VULNERABILITY_COUNT], size_t vul
           }
         break;
 
+      case 'J':
       case '\t':
         if (*current_vulnerability < vulnerabilities_count - 1)
           {
@@ -307,6 +308,7 @@ handle_key (vulnerability_t vulnerabilities[MAX_VULNERABILITY_COUNT], size_t vul
 
         break;
 
+      case 'K':
       case KEY_BTAB:
         if (*current_vulnerability > 0)
           {
