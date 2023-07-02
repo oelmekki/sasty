@@ -4,6 +4,11 @@ Sasty is a ncurses interface to read [Gitlab's SAST reports](https://docs.gitlab
 
 ![Screenshot](./screenshot.png)
 
+Sasty supports the following static analyzers on Gitlab CI:
+
+* Semgrep
+* Flawfinder
+
 > Note for Github users : development is happening
 > on [Gitlab](https://gitlab.com/oelmekki/sasty), please submit any issue
 > there or merge request there.
