@@ -6,10 +6,8 @@
 #include <string.h>
 
 #include "data.h"
+#include "reflow.h"
 #include "utils.h"
-
-#define MAX_LINES 2000
-#define MAX_LINE_LENGTH 1000
 
 WINDOW *list_win = NULL;
 MENU *list_menu = NULL;
@@ -60,123 +58,6 @@ populate_list (vulnerability_t vulnerabilities[MAX_VULNERABILITY_COUNT], size_t 
   refresh ();
 }
 
-typedef struct {
-  char *content;
-  bool heading;
-} line_t;
-
-/*
- * Reformat lines to fit the available `max_width`, so we know exactly
- * how many lines we need.
- *
- * That number of lines will be put into `count`, and the lines
- * will be in `lines`.
- *
- * You're responsible for freeing the strings contains in `lines`.
- *
- * Returns non-zero in case of error.
- */
-static int
-format_lines (size_t max_width, vulnerability_t *vulnerability, line_t lines[MAX_LINES], size_t *count)
-{
-  int err = 0;
-  char *desc_copy = NULL;
-
-  char *part = vulnerability->file;
-  while (true)
-    {
-      if (*count + 1 == MAX_LINES)
-        {
-          err = 1;
-          mvwprintw (report_win, 1, 1, "report contains too many lines (max allowed: %d).", MAX_LINES);
-          wrefresh (report_win);
-          goto cleanup;
-        }
-
-      lines[*count].content = xalloc (max_width + 1);
-      lines[*count].heading = true;
-      size_t would_write = snprintf (lines[*count].content, max_width, "%s", part);
-      (*count)++;
-      if (would_write > max_width)
-        part += max_width;
-      else
-        break;
-    }
-
-  lines[*count].content = xalloc (max_width + 1);
-  lines[*count].heading = true;
-  snprintf (lines[*count].content, max_width, "Category: %s", vulnerability->category);
-  (*count)++;
-
-  part = vulnerability->title;
-  while (true)
-    {
-      if (*count + 1 == MAX_LINES)
-        {
-          err = 1;
-          mvwprintw (report_win, 1, 1, "report contains too many lines (max allowed: %d).", MAX_LINES);
-          wrefresh (report_win);
-          goto cleanup;
-        }
-
-      lines[*count].content = xalloc (max_width + 1);
-      lines[*count].heading = true;
-      size_t would_write = snprintf (lines[*count].content, max_width, "%s", part);
-      (*count)++;
-      if (would_write > max_width)
-        part += max_width;
-      else
-        break;
-    }
-
-  lines[*count].content = xalloc (1);
-  (*count)++;
-
-  desc_copy = strdup (vulnerability->description);
-  char *start = desc_copy;
-
-  while (start)
-    {
-      char *end = strstr (start, "\n");
-      size_t len = end ? (size_t) (end - start) : strlen (start);
-      if (len > MAX_LINE_LENGTH)
-        len = MAX_LINE_LENGTH;
-
-      char line[len + 2];
-      memset (line, 0, len + 2);
-      snprintf (line, len + 1, "%s", start);
-
-      char *part = line;
-
-      while (true)
-        {
-          if (*count + 1 == MAX_LINES)
-            {
-              err = 1;
-              mvwprintw (report_win, 1, 1, "report contains too many lines (max allowed: %d).", MAX_LINES);
-              wrefresh (report_win);
-              goto cleanup;
-            }
-
-          lines[*count].content = xalloc (max_width + 2);
-          size_t would_write = snprintf (lines[*count].content, max_width + 1, "%s", part);
-          (*count)++;
-          if (would_write > max_width)
-            part += max_width;
-          else
-            break;
-        }
-
-      start = end;
-      if (start && start[0] != 0)
-        start++; // eat the \n character.
-    }
-
-  cleanup:
-  if (desc_copy) free (desc_copy);
-  return err;
-}
-
 /*
  * Display given vulnerability in main window.
  */
@@ -191,9 +72,12 @@ show_report (vulnerability_t *vulnerability, size_t y)
   line_t lines[MAX_LINES] = {0};
   size_t line_count = 0;
 
-  err = format_lines (max_width, vulnerability, lines, &line_count);
+  const char *err_msg = NULL;
+  err = reflow (max_width, vulnerability, lines, &line_count, &err_msg);
   if (err)
     {
+      mvwprintw (report_win, 1, 1, "%s", err_msg);
+      wrefresh (report_win);
       fprintf (stderr, "interface.c : show_report() : can't format lines.\n");
       goto cleanup;
     }

@@ -1,7 +1,13 @@
 #ifndef _DATA_H_
 #define _DATA_H_
 
+#include <stddef.h>
+
 #define MAX_VULNERABILITY_COUNT 100
+#define MAX_CATEGORY_LENGTH 500
+#define MAX_TITLE_LENGTH 1000
+#define MAX_DESC_LENGTH 100000
+#define MAX_LOCATION_LENGTH 1000
 
 typedef struct {
   char *category;
