@@ -13,7 +13,10 @@ usage (const char *progname)
 Brings a ncurses interface to inspect Gitlab's SAST reports. \n\
 \n\
 You must provide a path to a downloaded JSON report. \n\
-  ", progname);
+If you execute %s within the analyzed codebase's directory, \n\
+you will see snippets of the code related to each report. You \n\
+must be at the root of that directory for this to happen. \n\
+  ", progname, progname);
 }
 
 int

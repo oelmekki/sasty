@@ -41,6 +41,9 @@ sasty [-h|--help] <file>
 Brings a ncurses interface to inspect Gitlab's SAST reports. 
 
 You must provide a path to a downloaded JSON report. 
+If you execute sasty within the analyzed codebase's directory, 
+you will see snippets of the code related to each report. You 
+must be at the root of that directory for this to happen. 
 ```
 
 ## Compatibility?
