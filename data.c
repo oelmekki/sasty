@@ -218,11 +218,8 @@ fill_flawfinder_data (const json_object *vuln, size_t i, vulnerability_t vulns[M
   vulns[i].description = strndup (description, MAX_DESC_LENGTH - 1);
 
   json_object *location = json_object_object_get (vuln, "location");
-  json_object *file = json_object_object_get (location, "file");
-  json_object *line = json_object_object_get (location, "start_line");
-  char file_location[MAX_LOCATION_LENGTH] = {0};
-  snprintf (file_location, MAX_LOCATION_LENGTH - 1, "%s:%d", json_object_get_string (file), json_object_get_int (line));
-  vulns[i].file = strndup (file_location, MAX_LOCATION_LENGTH - 1);
+  vulns[i].file = strndup (json_object_get_string (json_object_object_get (location, "file")), MAX_LOCATION_LENGTH - 1);
+  vulns[i].line = json_object_get_int64 (json_object_object_get (location, "start_line"));
 
   (*vulns_count)++;
 }
@@ -238,11 +235,8 @@ fill_semgrep_data (const json_object *vuln, size_t i, vulnerability_t vulns[MAX_
   vulns[i].description = strndup (json_object_get_string (json_object_object_get (vuln, "description")), MAX_DESC_LENGTH - 1);
 
   json_object *location = json_object_object_get (vuln, "location");
-  json_object *file = json_object_object_get (location, "file");
-  json_object *line = json_object_object_get (location, "start_line");
-  char file_location[MAX_LOCATION_LENGTH] = {0};
-  snprintf (file_location, MAX_LOCATION_LENGTH - 1, "%s:%d", json_object_get_string (file), json_object_get_int (line));
-  vulns[i].file = strndup (file_location, MAX_LOCATION_LENGTH -1);
+  vulns[i].file = strndup (json_object_get_string (json_object_object_get (location, "file")), MAX_LOCATION_LENGTH - 1);
+  vulns[i].line = json_object_get_int64 (json_object_object_get (location, "start_line"));
 
   (*vulns_count)++;
 }

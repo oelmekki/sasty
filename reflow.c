@@ -1,10 +1,12 @@
 #include <ctype.h>
+#include <limits.h>
 #include <locale.h>
 #include <ncurses.h>
 #include <menu.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "data.h"
 #include "reflow.h"
@@ -50,7 +52,7 @@ wrap (char *content, size_t max_width, line_t lines[MAX_LINES], size_t *count, c
   while (start)
     {
       char *end = strstr (start, "\n");
-      size_t len = end ? (size_t) (end - start) : strlen (start);
+      size_t len = end ? (size_t) (end - start) : strnlen (start, MAX_LINE_LENGTH);
       if (len > MAX_LINE_LENGTH)
         len = MAX_LINE_LENGTH;
 
@@ -115,7 +117,7 @@ static int
 process_filename (size_t max_width, vulnerability_t *vulnerability, line_t lines[MAX_LINES], size_t *count, char **err_msg)
 {
   char copy[MAX_LOCATION_LENGTH] = {0};
-  snprintf (copy, MAX_LOCATION_LENGTH - 1, "%s", vulnerability->file);
+  snprintf (copy, MAX_LOCATION_LENGTH - 1, "%s:%ld", vulnerability->file, vulnerability->line);
   remove_breaks_within_paragraphs (MAX_LOCATION_LENGTH, copy);
   return wrap (copy, max_width, lines, count, err_msg, true);
 }
@@ -151,6 +153,114 @@ process_title (size_t max_width, vulnerability_t *vulnerability, line_t lines[MA
   return wrap (copy, max_width, lines, count, err_msg, true);
 }
 
+static bool
+is_inside_current_dir (const char *target_path)
+{
+  if (!target_path)
+    return false;
+
+  char current_path[PATH_MAX + 1] = {0};
+  char real_current_path[PATH_MAX + 1] = {0};
+  char real_target_path[PATH_MAX + 1] = {0};
+
+  char *success = getcwd (current_path, PATH_MAX);
+  if (!success)
+    return false;
+
+  success = realpath (current_path, real_current_path);
+  if (!success)
+    return false;
+
+  success = realpath (target_path, real_target_path);
+  if (!success)
+    return false;
+
+  return strncmp (real_current_path, real_target_path, strnlen (real_current_path, PATH_MAX)) == 0;
+}
+
+/*
+ * Add category information as header.
+ *
+ * In case of error, it just silently fail, we don't want to interrupt
+ * the program for that.
+ *
+ * Parameters are the same than reflow(), minus error handling.
+ */
+static void
+add_snippet (size_t max_width, vulnerability_t *vulnerability, line_t lines[MAX_LINES], size_t *count)
+{
+  FILE *file = NULL;
+
+  if (!is_inside_current_dir (vulnerability->file))
+    return;
+
+  int err = access (vulnerability->file, R_OK);
+  if (err)
+    return;
+
+  file = fopen (vulnerability->file, "r");
+  if (!file)
+    return;
+
+  size_t start = 0;
+  size_t end = vulnerability->line + 2;
+
+  if ((int) vulnerability->line - 2 > 0)
+    start = vulnerability->line - 2;
+
+
+  lines[*count].content = xalloc (max_width + 1);
+  snprintf (lines[*count].content, max_width, "Snippet:");
+  (*count)++;
+
+  lines[*count].content = xalloc (max_width + 1);
+  snprintf (lines[*count].content, max_width, "```");
+  (*count)++;
+
+  char line[MAX_LINE_LENGTH + 1] = {0};
+  size_t current_line = 0;
+  while (true)
+    {
+      current_line++;
+      char *read = fgets (line, MAX_LINE_LENGTH, file);
+      if (!read)
+        break;
+
+      if (current_line >= start && current_line <= end)
+        {
+          if (line[strnlen (line, MAX_LINE_LENGTH) - 1] == '\n')
+            line[strnlen (line, MAX_LINE_LENGTH) - 1] = 0;
+
+          char *err_msg = NULL;
+          bool highlight = false;
+          if (current_line == vulnerability->line)
+            highlight = true;
+
+          err = wrap (line, max_width, lines, count, &err_msg, highlight);
+          if (err_msg)
+            free (err_msg);
+          if (err)
+            goto cleanup;
+        }
+
+      if (strnlen (read, MAX_LINE_LENGTH) == MAX_LINE_LENGTH)
+        current_line--; // this is a very long line
+
+      if (current_line > end)
+        break;
+    }
+
+  lines[*count].content = xalloc (max_width + 1);
+  snprintf (lines[*count].content, max_width, "```");
+  (*count)++;
+
+  lines[*count].content = xalloc (1);
+  (*count)++;
+
+  cleanup:
+  if (file) fclose (file);
+}
+
 /*
  * Add body content.
  *
@@ -165,7 +275,7 @@ process_body (size_t max_width, vulnerability_t *vulnerability, line_t lines[MAX
   char *desc_copy = NULL;
 
   desc_copy = strndup (vulnerability->description, MAX_DESC_LENGTH);
-  remove_breaks_within_paragraphs (strlen (desc_copy) + 1, desc_copy);
+  remove_breaks_within_paragraphs (strnlen (desc_copy, MAX_DESC_LENGTH) + 1, desc_copy);
 
   err = wrap (desc_copy, max_width, lines, count, err_msg, false);
   if (desc_copy) free (desc_copy);
@@ -200,6 +310,8 @@ reflow (size_t max_width, vulnerability_t *vulnerability, line_t lines[MAX_LINES
   // blank line between headers and body
   lines[*count].content = xalloc (1);
   (*count)++;
+
+  add_snippet (max_width, vulnerability, lines, count);
 
   err = process_body (max_width, vulnerability, lines, count, err_msg);
   if (err)

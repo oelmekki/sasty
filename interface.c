@@ -72,7 +72,7 @@ show_report (vulnerability_t *vulnerability, size_t y)
   line_t lines[MAX_LINES] = {0};
   size_t line_count = 0;
 
-  const char *err_msg = NULL;
+  char *err_msg = NULL;
   err = reflow (max_width, vulnerability, lines, &line_count, &err_msg);
   if (err)
     {
