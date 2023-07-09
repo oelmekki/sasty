@@ -41,6 +41,9 @@ create_report_window ()
 static void
 populate_list (vulnerability_t vulnerabilities[MAX_VULNERABILITY_COUNT], size_t vulnerabilities_count)
 {
+  if (vulnerabilities_count == 0)
+    return;
+
   items = xalloc ((vulnerabilities_count + 1) * sizeof (ITEM *));
   for (size_t i = 0; i < vulnerabilities_count; i++)
     items[i] = new_item (vulnerabilities[i].title, NULL);
@@ -139,7 +142,10 @@ init_ncurses (vulnerability_t vulnerabilities[MAX_VULNERABILITY_COUNT], size_t v
   if (vulnerabilities_count > 0)
     show_report (&vulnerabilities[0], 0);
   else
-    mvwprintw (report_win, 1, 1, "No vulnerability found.");
+    {
+      mvwprintw (report_win, 1, 1, "No vulnerability found.");
+      wrefresh (report_win);
+    }
 
   move (LINES - 1, COLS - 1);
   refresh ();
@@ -154,7 +160,7 @@ bool
 handle_key (vulnerability_t vulnerabilities[MAX_VULNERABILITY_COUNT], size_t vulnerabilities_count, size_t *current_vulnerability, size_t *current_line)
 {
   int key = getch ();
-  (void) vulnerabilities_count;
+
 
   switch (key)
     {
@@ -163,46 +169,54 @@ handle_key (vulnerability_t vulnerabilities[MAX_VULNERABILITY_COUNT], size_t vul
 
       case 'j':
       case KEY_DOWN:
-        (*current_line)++;
-        show_report (&vulnerabilities[*current_vulnerability], *current_line);
-        move (LINES - 1, COLS - 1);
+        if (vulnerabilities_count > 0)
+          {
+            (*current_line)++;
+            show_report (&vulnerabilities[*current_vulnerability], *current_line);
+            move (LINES - 1, COLS - 1);
+          }
         break;
 
       case 'k':
       case KEY_UP:
-        if (*current_line > 0)
+        if (vulnerabilities_count > 0)
           {
-            (*current_line)--;
-            show_report (&vulnerabilities[*current_vulnerability], *current_line);
-            move (LINES - 1, COLS - 1);
+            if (*current_line > 0)
+              {
+                (*current_line)--;
+                show_report (&vulnerabilities[*current_vulnerability], *current_line);
+                move (LINES - 1, COLS - 1);
+              }
           }
         break;
 
       case 'J':
       case '\t':
-        if (*current_vulnerability < vulnerabilities_count - 1)
-          {
-            (*current_vulnerability)++;
-            *current_line = 0;
-            menu_driver (list_menu, REQ_DOWN_ITEM);
-            wrefresh (list_win);
-            show_report (&vulnerabilities[*current_vulnerability], *current_line);
-            move (LINES - 1, COLS - 1);
-          }
+        if (vulnerabilities_count > 0)
+          if (*current_vulnerability < vulnerabilities_count - 1)
+            {
+              (*current_vulnerability)++;
+              *current_line = 0;
+              menu_driver (list_menu, REQ_DOWN_ITEM);
+              wrefresh (list_win);
+              show_report (&vulnerabilities[*current_vulnerability], *current_line);
+              move (LINES - 1, COLS - 1);
+            }
 
         break;
 
       case 'K':
       case KEY_BTAB:
-        if (*current_vulnerability > 0)
-          {
-            (*current_vulnerability)--;
-            *current_line = 0;
-            menu_driver (list_menu, REQ_UP_ITEM);
-            wrefresh (list_win);
-            show_report (&vulnerabilities[*current_vulnerability], *current_line);
-            move (LINES - 1, COLS - 1);
-          }
+        if (vulnerabilities_count > 0)
+          if (*current_vulnerability > 0)
+            {
+              (*current_vulnerability)--;
+              *current_line = 0;
+              menu_driver (list_menu, REQ_UP_ITEM);
+              wrefresh (list_win);
+              show_report (&vulnerabilities[*current_vulnerability], *current_line);
+              move (LINES - 1, COLS - 1);
+            }
 
         break;
     }
